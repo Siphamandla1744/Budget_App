@@ -5,157 +5,182 @@
     android:id="@+id/drawer_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:openDrawer="start">
+    android:background="@color/dark_bg"
+    tools:context=".Category">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/main"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#FFFFFF">
+        android:layout_height="match_parent">
 
-        <!-- Toolbar -->
         <LinearLayout
-            android:id="@+id/toolbar"
+            android:id="@+id/header"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:gravity="center_vertical"
+            android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:paddingHorizontal="16dp"
+            android:padding="16dp"
+            android:gravity="center_vertical"
             app:layout_constraintTop_toTopOf="parent">
 
             <ImageView
                 android:id="@+id/ivMenu"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
                 android:src="@android:drawable/ic_menu_sort_by_size"
-                app:tint="#757575" />
+                app:tint="@color/white" />
 
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="24dp"
-                android:layout_weight="1"
+                android:layout_marginStart="16dp"
                 android:orientation="vertical">
-
                 <TextView
+                    android:id="@+id/tvTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Categories"
-                    android:textColor="@color/black"
-                    android:textSize="18sp"
+                    android:textColor="@color/white"
+                    android:textSize="20sp"
                     android:textStyle="bold" />
-
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Spending Overview"
-                    android:textColor="#757575"
+                    android:textColor="@color/white"
+                    android:alpha="0.7"
                     android:textSize="12sp" />
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Chart Section -->
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chipGroupFilter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:singleSelection="true"
+            app:selectionRequired="true"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/header">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipDay"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Day"
+                android:textColor="@color/white"
+                app:chipBackgroundColor="@color/glass_white" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipWeek"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Week"
+                android:textColor="@color/white"
+                app:chipBackgroundColor="@color/glass_white" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipMonth"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:text="Month"
+                android:textColor="@color/white"
+                app:chipBackgroundColor="@color/glass_white" />
+        </com.google.android.material.chip.ChipGroup>
+
         <com.github.mikephil.charting.charts.PieChart
             android:id="@+id/categoryPieChart"
-            android:layout_width="match_parent"
-            android:layout_height="250dp"
+            android:layout_width="300dp"
+            android:layout_height="300dp"
             android:layout_marginTop="8dp"
-            app:layout_constraintTop_toBottomOf="@id/toolbar" />
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/chipGroupFilter" />
 
-        <!-- Tabs (Expenses / Income) -->
         <LinearLayout
-            android:id="@+id/tabLayout"
+            android:id="@+id/llTabs"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
+            android:layout_height="48dp"
             android:layout_marginTop="8dp"
+            android:orientation="horizontal"
             app:layout_constraintTop_toBottomOf="@id/categoryPieChart">
 
-            <LinearLayout
+            <FrameLayout
                 android:id="@+id/tabExpenses"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:orientation="vertical">
-
+                android:layout_height="match_parent"
+                android:layout_weight="1">
                 <TextView
                     android:id="@+id/tvExpensesTab"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:paddingVertical="12dp"
+                    android:layout_gravity="center"
                     android:text="Expenses"
-                    android:textColor="#2E7D32"
+                    android:textColor="@color/neon_blue"
                     android:textStyle="bold" />
-
                 <View
                     android:id="@+id/indicatorExpenses"
                     android:layout_width="match_parent"
-                    android:layout_height="3dp"
-                    android:background="#2E7D32" />
-            </LinearLayout>
+                    android:layout_height="2dp"
+                    android:layout_gravity="bottom"
+                    android:background="@color/neon_blue" />
+            </FrameLayout>
 
-            <LinearLayout
+            <FrameLayout
                 android:id="@+id/tabIncome"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:orientation="vertical">
-
+                android:layout_height="match_parent"
+                android:layout_weight="1">
                 <TextView
                     android:id="@+id/tvIncomeTab"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:paddingVertical="12dp"
+                    android:layout_gravity="center"
                     android:text="Income"
-                    android:textColor="#757575" />
-
+                    android:textColor="@color/white"
+                    android:alpha="0.5"
+                    android:textStyle="bold" />
                 <View
                     android:id="@+id/indicatorIncome"
                     android:layout_width="match_parent"
-                    android:layout_height="3dp"
-                    android:background="@android:color/transparent" />
-            </LinearLayout>
+                    android:layout_height="2dp"
+                    android:layout_gravity="bottom"
+                    android:background="@color/neon_blue"
+                    android:visibility="invisible" />
+            </FrameLayout>
         </LinearLayout>
 
-        <View
-            android:id="@+id/divider"
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="#E0E0E0"
-            app:layout_constraintTop_toBottomOf="@id/tabLayout" />
-
-        <!-- Categories List -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rv_categories"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-            app:layout_constraintBottom_toTopOf="@id/bottomBar"
-            app:layout_constraintTop_toBottomOf="@id/divider"
-            tools:listitem="@layout/category_list_item" />
+            android:layout_marginTop="8dp"
+            app:layout_constraintBottom_toTopOf="@id/bottomActions"
+            app:layout_constraintTop_toBottomOf="@id/llTabs" />
 
-        <!-- Bottom Bar -->
         <LinearLayout
-            android:id="@+id/bottomBar"
+            android:id="@+id/bottomActions"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
             android:orientation="horizontal"
             android:padding="16dp"
-            app:layout_constraintBottom_toBottomOf="parent">
+            android:gravity="center_vertical"
+            app:layout_constraintBottom_toTopOf="@id/includeBottomNav">
 
             <ImageView
                 android:id="@+id/fab_add_category"
                 android:layout_width="32dp"
                 android:layout_height="32dp"
                 android:src="@android:drawable/ic_input_add"
-                app:tint="#757575" />
+                app:tint="@color/white" />
 
             <View
                 android:layout_width="0dp"
-                android:layout_height="0dp"
+                android:layout_height="1dp"
                 android:layout_weight="1" />
 
             <TextView
@@ -163,9 +188,17 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Merge categories..."
-                android:textColor="#757575"
+                android:textColor="@color/white"
+                android:alpha="0.6"
                 android:textSize="14sp" />
         </LinearLayout>
+
+        <include
+            android:id="@+id/includeBottomNav"
+            layout="@layout/layout_bottom_nav"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:layout_constraintBottom_toBottomOf="parent" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

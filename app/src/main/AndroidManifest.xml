@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -11,45 +14,56 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Budget_App">
-        <activity
-            android:name=".AddAccountActivity"
-            android:exported="false" />
-        <activity
-            android:name=".TransactionHistoryActivity"
-            android:exported="false" />
-        <activity
-            android:name=".Category"
-            android:exported="false" />
-        <activity
-            android:name=".AddExpenseActivity"
-            android:exported="false" />
-        <activity
-            android:name=".Addexpense"
-            android:exported="false" />
-        <activity
-            android:name=".Createbudget"
-            android:exported="false" />
-        <activity
-            android:name=".activity_creategoal"
-            android:exported="false" /> <!-- Splash Screen (Launcher Activity) -->
+
+        <!-- 1. SPLASH: Entry point. Must be singleInstance or standard with noHistory -->
         <activity
             android:name=".activity_splash"
-            android:exported="true">
+            android:exported="true"
+            android:noHistory="true"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity> <!-- Main Activity -->
-        <activity
-            android:name=".MainActivity"
-            android:exported="false" /> <!-- Register Activity -->
-        <activity
-            android:name=".activity_register"
-            android:exported="false" /> <!-- Login Activity -->
+        </activity>
+
+        <!-- 2. LOGIN: Should be singleTop to prevent multiple instances -->
         <activity
             android:name=".activity_login"
-            android:exported="false" />
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- 3. REGISTER: Should be singleTop -->
+        <activity
+            android:name=".activity_register"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- 4. DASHBOARD (MAIN): The core destination -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait" />
+
+        <!-- 5. Supporting Features (Internal Navigation) -->
+        <activity android:name=".AddAccountActivity" android:exported="false" />
+        <activity android:name=".AddExpenseActivity" android:exported="false" />
+        <activity android:name=".Category" android:exported="false" />
+        <activity android:name=".Createbudget" android:exported="false" />
+        <activity android:name=".ReportsActivity" android:exported="false" />
+        <activity android:name=".GamificationActivity" android:exported="false" />
+        <activity android:name=".SettingsActivity" android:exported="false" />
+        <activity android:name=".NotificationsActivity" android:exported="false" />
+        <activity android:name=".TransactionHistoryActivity" android:exported="false" />
+        <activity android:name=".BudgetOverviewActivity" android:exported="false" />
+        <activity android:name=".activity_creategoal" android:exported="false" />
+        <activity android:name=".ForgotPasswordActivity" android:exported="false" />
+
     </application>
 
 </manifest>

@@ -4,8 +4,9 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginVertical="8dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="2dp">
+    app:cardBackgroundColor="@color/glass_white"
+    app:cardCornerRadius="20dp"
+    app:cardElevation="0dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -18,7 +19,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Goal Name"
-            android:textColor="@color/black"
+            android:textColor="@color/white"
             android:textSize="18sp"
             android:textStyle="bold" />
 
@@ -26,21 +27,31 @@
             android:id="@+id/tvTargetDate"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Target Date: 01/01/2025"
-            android:textColor="#757575"
+            android:text="Target: 01/01/2025"
+            android:textColor="@color/white"
+            android:alpha="0.6"
             android:textSize="12sp" />
+
+        <ProgressBar
+            android:id="@+id/pbGoalProgress"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="10dp"
+            android:layout_marginTop="16dp"
+            android:progress="45"
+            android:progressDrawable="@drawable/custom_progress_bar" />
 
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp">
+            android:layout_marginTop="8dp">
 
             <TextView
                 android:id="@+id/tvCurrentAmount"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="R 0.00"
-                android:textColor="@color/black"
+                android:text="R 4,500"
+                android:textColor="@color/neon_blue"
                 android:textStyle="bold" />
 
             <TextView
@@ -48,28 +59,20 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignParentEnd="true"
-                android:text="Target: R 10,000"
-                android:textColor="#757575" />
+                android:text="of R 10,000"
+                android:textColor="@color/white"
+                android:alpha="0.7" />
+
+            <TextView
+                android:id="@+id/tvProgressPercent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:text="45%"
+                android:textColor="@color/white"
+                android:textSize="10sp"
+                android:alpha="0.8" />
         </RelativeLayout>
-
-        <ProgressBar
-            android:id="@+id/pbGoalProgress"
-            style="@android:style/Widget.ProgressBar.Horizontal"
-            android:layout_width="match_parent"
-            android:layout_height="8dp"
-            android:layout_marginTop="8dp"
-            android:progress="0"
-            android:progressDrawable="@drawable/custom_progress_bar" />
-
-        <TextView
-            android:id="@+id/tvProgressPercent"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="end"
-            android:layout_marginTop="4dp"
-            android:text="0%"
-            android:textColor="#2E7D32"
-            android:textStyle="bold" />
 
     </LinearLayout>
 </androidx.cardview.widget.CardView>

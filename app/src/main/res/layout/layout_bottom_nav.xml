@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="100dp"
+    android:paddingBottom="24dp">
+
+    <!-- The Glassmorphic Container -->
+    <LinearLayout
+        android:id="@+id/tabContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="64dp"
+        android:layout_gravity="center"
+        android:background="@drawable/glass_tab_container_bg"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp">
+
+        <!-- Well 1: Gift -->
+        <FrameLayout
+            android:id="@+id/nav_well_1"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/recessed_well_bg"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:id="@+id/nav_icon_1"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_tab_gift" />
+        </FrameLayout>
+
+        <!-- Well 2: Menu -->
+        <FrameLayout
+            android:id="@+id/nav_well_2"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="12dp"
+            android:background="@drawable/recessed_well_bg"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:id="@+id/nav_icon_2"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_tab_menu"
+                app:tint="@color/white" />
+        </FrameLayout>
+
+        <!-- Well 3: Eye -->
+        <FrameLayout
+            android:id="@+id/nav_well_3"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="12dp"
+            android:background="@drawable/recessed_well_bg"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:id="@+id/nav_icon_3"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_tab_eye"
+                app:tint="@color/white" />
+        </FrameLayout>
+
+        <!-- Well 4: Star -->
+        <FrameLayout
+            android:id="@+id/nav_well_4"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="12dp"
+            android:background="@drawable/recessed_well_bg"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:id="@+id/nav_icon_4"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_tab_star"
+                app:tint="@color/white" />
+        </FrameLayout>
+
+    </LinearLayout>
+</FrameLayout>

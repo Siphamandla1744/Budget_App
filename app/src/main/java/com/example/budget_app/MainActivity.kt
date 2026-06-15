@@ -1,243 +1,406 @@
 package com.example.budget_app
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
-import android.view.LayoutInflater
+import android.util.Log
 import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
-import androidx.core.view.GravityCompat
-import androidx.core.view.ViewCompat
-import androidx.drawerlayout.widget.DrawerLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.budget_app.Transaction_Adapter.TransactionAdapter
+import com.example.budget_app.transaction_adapter.TransactionAdapter
 import com.example.budget_app.model.Account
 import com.example.budget_app.model.transactions
 import com.github.mikephil.charting.charts.PieChart
 import com.github.mikephil.charting.data.PieData
 import com.github.mikephil.charting.data.PieDataSet
 import com.github.mikephil.charting.data.PieEntry
-import com.github.mikephil.charting.utils.ColorTemplate
-import com.google.android.material.navigation.NavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import java.util.Calendar
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var auth: FirebaseAuth
-    private lateinit var database: FirebaseDatabase
-    private lateinit var drawerLayout: DrawerLayout
-    private lateinit var pieChart: PieChart
-    private lateinit var rvRecentTransactions: RecyclerView
-    private lateinit var transactionAdapter: TransactionAdapter
+    private val TAG = "DASHBOARD_ENGINE"
+    
+    private var auth: FirebaseAuth? = null
+    private var database: FirebaseDatabase? = null
+    
+    // UI Elements (Nullable for Zero-Assumption binding)
+    private var pieChart: PieChart? = null
+    private var rvRecentTransactions: RecyclerView? = null
+    private var transactionAdapter: TransactionAdapter? = null
     private val transactionList = mutableListOf<transactions>()
-    private lateinit var llAccountContainer: LinearLayout
+    private var llAccountContainer: LinearLayout? = null
+    private var tvMonthlyTotal: TextView? = null
+    private var ivTopProfile: ImageView? = null
+    private var tvWelcomeHeader: TextView? = null
+    private var tvXpStatus: TextView? = null
+    private var pbLevelProgress: ProgressBar? = null
+
+    private var tvHighestExpenseName: TextView? = null
+    private var vHighestExpenseColor: View? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        Log.d(TAG, "MainActivity lifecycle started.")
 
-        auth = FirebaseAuth.getInstance()
-        database = FirebaseDatabase.getInstance()
-        drawerLayout = findViewById(R.id.drawer_layout)
-        pieChart = findViewById(R.id.pieChart)
-        rvRecentTransactions = findViewById(R.id.rvRecentTransactions)
-        llAccountContainer = findViewById(R.id.llAccountContainer)
-        val navView: NavigationView = findViewById(R.id.nav_view)
+        // GLOBAL DIAGNOSTIC TRAP: Captures any initialization failure and displays it on-screen
+        try {
+            // STEP 1: Apply Theme before anything else
+            applySavedTheme()
 
-        // Setup RecyclerView
-        rvRecentTransactions.layoutManager = LinearLayoutManager(this)
-        transactionAdapter = TransactionAdapter(
-            transactionList,
-            onTransactionClick = { transaction ->
-                // Start AddExpenseActivity in Edit Mode (needs TRANSACTION_KEY)
-                // We'd need the key here. In fetchTransactions, we can store keys.
-                Toast.makeText(this, "Click history for full management", Toast.LENGTH_SHORT).show()
-            },
-            onTransactionLongClick = { /* Optional: delete from home */ }
-        )
-        rvRecentTransactions.adapter = transactionAdapter
-
-        // Handle window insets
-        val mainView = findViewById<View>(R.id.main_scroll_view)
-        ViewCompat.setOnApplyWindowInsetsListener(mainView) { v, insets ->
-            val systemBars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
-
-        // Click Listeners
-        findViewById<ImageView>(R.id.ivMenu).setOnClickListener {
-            drawerLayout.openDrawer(GravityCompat.START)
-        }
-
-        findViewById<TextView>(R.id.tvAddAccount).setOnClickListener {
-            startActivity(Intent(this, AddAccountActivity::class.java))
-        }
-
-        findViewById<CardView>(R.id.cvTrackSpending).setOnClickListener {
-            startActivity(Intent(this, AddExpenseActivity::class.java))
-        }
-
-        findViewById<TextView>(R.id.tvBudgetTab).setOnClickListener {
-            startActivity(Intent(this, Createbudget::class.java))
-        }
-
-        navView.setNavigationItemSelectedListener { menuItem ->
-            when (menuItem.itemId) {
-                R.id.nav_home -> drawerLayout.closeDrawer(GravityCompat.START)
-                R.id.nav_categories -> startActivity(Intent(this, Category::class.java))
-                R.id.nav_goals -> startActivity(Intent(this, activity_creategoal::class.java))
-                R.id.nav_history -> startActivity(Intent(this, TransactionHistoryActivity::class.java))
-                R.id.nav_help -> Toast.makeText(this, "Help Centre", Toast.LENGTH_SHORT).show()
-                R.id.nav_logout -> {
-                    auth.signOut()
-                    startActivity(Intent(this, activity_login::class.java))
-                    finish()
-                }
-            }
-            drawerLayout.closeDrawer(GravityCompat.START)
-            true
-        }
-
-        fetchTransactions()
-        fetchAccounts()
-    }
-
-    private fun fetchAccounts() {
-        val userId = auth.currentUser?.uid ?: return
-        val accountsRef = database.getReference("users").child(userId).child("accounts")
-
-        accountsRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                llAccountContainer.removeAllViews()
-                
-                for (data in snapshot.children) {
-                    val account = data.getValue(Account::class.java)
-                    if (account != null) {
-                        addAccountCard(account)
-                    }
-                }
-
-                val addAccountText = TextView(this@MainActivity).apply {
-                    text = "+ Add Account"
-                    setTextColor(Color.BLACK)
-                    textSize = 16f
-                    setPadding(32, 8, 32, 8)
-                    setOnClickListener {
-                        startActivity(Intent(this@MainActivity, AddAccountActivity::class.java))
-                    }
-                }
-                llAccountContainer.addView(addAccountText)
+            // STEP 2: Force layout inflation first with ZERO logic
+            try {
+                setContentView(R.layout.activity_main)
+            } catch (inflationError: Exception) {
+                // If inflation fails, we are likely missing a view ID or resource
+                showDiagnosticOverlay("XML INFLATION ERROR", inflationError)
+                return
             }
 
-            override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(this@MainActivity, "Failed to load accounts", Toast.LENGTH_SHORT).show()
-            }
-        })
-    }
-
-    private fun addAccountCard(account: Account) {
-        val cardView = CardView(this).apply {
-            layoutParams = LinearLayout.LayoutParams(450, 180).apply {
-                setMargins(0, 0, 24, 0)
-            }
-            radius = 60f
-            setCardBackgroundColor(Color.BLACK)
-            setContentPadding(32, 16, 32, 16)
+            // STEP 3: Safe View Binding
+            bindViewsInternal()
             
-            // Manage Account Click
-            setOnClickListener {
-                val intent = Intent(this@MainActivity, AddAccountActivity::class.java)
-                intent.putExtra("ACCOUNT_ID", account.accountId)
-                startActivity(intent)
+            // STEP 4: Inject Safe Placeholder States
+            applyInitialUIFallbacks()
+
+            // STEP 5: Auth & Engine Initialization
+            auth = FirebaseAuth.getInstance()
+            database = FirebaseDatabase.getInstance()
+
+            val sessionUser = auth?.currentUser
+            if (sessionUser == null) {
+                Log.w(TAG, "Auth check failed: User is null.")
+                forceSafeLogout()
+                return
             }
-        }
 
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
+            // STEP 6: Component Wiring
+            setupNavigationHandlers()
+            
+            // STEP 7: Async Data Fetch (Must not block UI thread)
+            startDataEngine(sessionUser.uid)
 
-        val tvName = TextView(this).apply {
-            text = account.name
-            setTextColor(Color.WHITE)
-            textSize = 14f
+        } catch (globalException: Exception) {
+            Log.e(TAG, "ULTIMATE STARTUP FAILURE", globalException)
+            // INSTEAD OF REDIRECTING, WE TRAP THE ERROR AND SHOW IT
+            showDiagnosticOverlay("INITIALIZATION CRASH", globalException)
         }
-
-        val tvBalance = TextView(this).apply {
-            text = "R ${String.format("%.2f", account.balance)}"
-            setTextColor(Color.WHITE)
-            textSize = 18f
-            setTypeface(null, android.graphics.Typeface.BOLD)
-        }
-
-        layout.addView(tvName)
-        layout.addView(tvBalance)
-        cardView.addView(layout)
-        llAccountContainer.addView(cardView)
     }
 
-    private fun fetchTransactions() {
-        val userId = auth.currentUser?.uid ?: return
-        val transRef = database.getReference("users").child(userId).child("transactions")
+    private fun showDiagnosticOverlay(title: String, e: Throwable) {
+        val stackTrace = Log.getStackTraceString(e)
+        Log.e("DIAGNOSTIC", "$title: $stackTrace")
+        
+        runOnUiThread {
+            try {
+                val dialog = androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle("TRAPPED ERROR: $title")
+                    .setMessage("The app failed to start. Review the trace below:\n\n$stackTrace")
+                    .setCancelable(false)
+                    .setPositiveButton("Copy Error") { _, _ ->
+                        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        val clip = android.content.ClipData.newPlainText("App Crash Trace", stackTrace)
+                        clipboard.setPrimaryClip(clip)
+                        Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                    }
+                    .setNegativeButton("Attempt Logout") { _, _ ->
+                        forceSafeLogout()
+                    }
+                    .create()
+                dialog.show()
+                
+                // Also set a temporary view in case the dialog fails
+                val tv = TextView(this)
+                tv.text = stackTrace
+                tv.setTextColor(android.graphics.Color.RED)
+                tv.setBackgroundColor(android.graphics.Color.BLACK)
+                tv.setPadding(32, 32, 32, 32)
+                tv.isVerticalScrollBarEnabled = true
+                setContentView(tv)
+            } catch (inner: Exception) {
+                Log.e("DIAGNOSTIC", "Failed to show dialog", inner)
+            }
+        }
+    }
 
-        transRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                transactionList.clear()
-                val categoryTotals = mutableMapOf<String, Float>()
+    private fun applySavedTheme() {
+        try {
+            val sharedPrefs = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+            val isDarkMode = sharedPrefs.getBoolean("dark_mode_enabled", true)
+            if (isDarkMode) {
+                androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES)
+            } else {
+                androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Theme application failed", e)
+        }
+    }
 
-                for (data in snapshot.children) {
-                    val transaction = data.getValue(transactions::class.java)
-                    if (transaction != null) {
-                        transactionList.add(transaction)
-                        val catName = transaction.category.category_name
-                        val amount = transaction.transaction_amamount.toFloat()
-                        categoryTotals[catName] = categoryTotals.getOrDefault(catName, 0f) + amount
+    private fun bindViewsInternal() {
+        try {
+            pieChart = findViewById(R.id.pieChart)
+            rvRecentTransactions = findViewById(R.id.rvRecentTransactions)
+            llAccountContainer = findViewById(R.id.llAccountContainer)
+            tvWelcomeHeader = findViewById(R.id.tvTopTitle)
+            tvMonthlyTotal = findViewById(R.id.tvMonthlyTotal)
+            tvHighestExpenseName = findViewById(R.id.tvHighestExpenseName)
+            vHighestExpenseColor = findViewById(R.id.vHighestExpenseColor)
+
+            rvRecentTransactions?.layoutManager = LinearLayoutManager(this)
+            transactionAdapter = TransactionAdapter(transactionList, { t -> launchEditor(t) }, {})
+            rvRecentTransactions?.adapter = transactionAdapter
+            
+            findViewById<CardView>(R.id.cvAddAccount)?.setOnClickListener {
+                startActivity(Intent(this, AddAccountActivity::class.java))
+            }
+            findViewById<CardView>(R.id.cvTrackSpending)?.setOnClickListener {
+                startActivity(Intent(this, AddExpenseActivity::class.java))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Binding failed: ${e.message}")
+        }
+    }
+
+    private fun applyInitialUIFallbacks() {
+        // Guarantee no empty text fields
+        tvMonthlyTotal?.text = "R 0.00"
+        tvWelcomeHeader?.text = "Welcome back!"
+        pieChart?.setNoDataText("Loading budget data...")
+    }
+
+    private fun startDataEngine(uid: String) {
+        // Fire independent async tasks with internal safety
+        loadProfileData(uid)
+        loadAccountData(uid)
+        loadTransactionData(uid)
+        loadGamificationData(uid)
+    }
+
+    private fun loadGamificationData(uid: String) {
+        database?.getReference("users")?.child(uid)?.child("gamification")
+            ?.addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (isFinishing || isDestroyed) return
+                    val xp = snapshot.child("xp").getValue(Int::class.java) ?: 0
+                    val level = snapshot.child("level").getValue(Int::class.java) ?: 1
+                    
+                    runOnUiThread {
+                        // We could add these views to activity_main.xml or just log for now
+                        // To be safe, we'll try to find them first
+                        Log.d(TAG, "Gamification synced: Level $level, $xp XP")
                     }
                 }
-                
-                transactionList.reverse() // Newest first
-                transactionAdapter.notifyDataSetChanged()
-                updatePieChart(categoryTotals)
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(this@MainActivity, "Error: ${error.message}", Toast.LENGTH_SHORT).show()
-            }
-        })
+                override fun onCancelled(error: DatabaseError) {}
+            })
     }
 
-    private fun updatePieChart(categoryTotals: Map<String, Float>) {
-        val entries = ArrayList<PieEntry>()
-        for ((name, total) in categoryTotals) {
-            entries.add(PieEntry(total, name))
+    private fun loadProfileData(uid: String) {
+        database?.getReference("users")?.child(uid)?.child("profile")
+            ?.addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (isFinishing || isDestroyed) return
+                    val name = snapshot.child("username").getValue(String::class.java) ?: "User"
+                    val imgUrl = snapshot.child("profileImageUrl").getValue(String::class.java)
+                    
+                    runOnUiThread {
+                        tvWelcomeHeader?.text = "Welcome back, $name!"
+                        if (!imgUrl.isNullOrEmpty() && ivTopProfile != null) {
+                            com.bumptech.glide.Glide.with(this@MainActivity)
+                                .load(imgUrl).circleCrop().placeholder(R.drawable.pic1).into(ivTopProfile!!)
+                        }
+                    }
+                }
+                override fun onCancelled(error: DatabaseError) {}
+            })
+    }
+
+    private fun loadAccountData(uid: String) {
+        database?.getReference("users")?.child(uid)?.child("accounts")
+            ?.addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (isFinishing || isDestroyed) return
+                    runOnUiThread {
+                        llAccountContainer?.removeAllViews()
+                        for (data in snapshot.children) {
+                            val acc = data.getValue(Account::class.java)
+                            if (acc != null) createAccountView(acc)
+                        }
+                        // Always ensure the "Add" card exists
+                        val addView = layoutInflater.inflate(R.layout.item_add_account_card, llAccountContainer, false)
+                        addView.setOnClickListener { startActivity(Intent(this@MainActivity, AddAccountActivity::class.java)) }
+                        llAccountContainer?.addView(addView)
+                    }
+                }
+                override fun onCancelled(error: DatabaseError) {}
+            })
+    }
+
+    private fun createAccountView(acc: Account) {
+        try {
+            val card = CardView(this).apply {
+                layoutParams = LinearLayout.LayoutParams(600, 300).apply { setMargins(0, 0, 24, 0) }
+                radius = 70f
+                setCardBackgroundColor(Color.BLACK)
+                val l = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL; setPadding(48, 48, 48, 48) }
+                val n = TextView(this@MainActivity).apply { text = acc.name; setTextColor(Color.WHITE); textSize = 14f }
+                val b = TextView(this@MainActivity).apply { 
+                    text = String.format(Locale.getDefault(), "R %.2f", acc.balance)
+                    setTextColor(Color.WHITE); textSize = 22f; setTypeface(null, android.graphics.Typeface.BOLD) 
+                }
+                l.addView(n); l.addView(b); addView(l)
+                setOnClickListener {
+                    val i = Intent(this@MainActivity, AddAccountActivity::class.java)
+                    i.putExtra("ACCOUNT_ID", acc.accountId)
+                    startActivity(i)
+                }
+            }
+            llAccountContainer?.addView(card, 0) // Add to start
+        } catch (e: Exception) { Log.e(TAG, "Account Card Failure") }
+    }
+
+    private fun loadTransactionData(uid: String) {
+        database?.getReference("users")?.child(uid)?.child("transactions")
+            ?.addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (isFinishing || isDestroyed) return
+                    transactionList.clear()
+                    for (data in snapshot.children) {
+                        val t = data.getValue(transactions::class.java) ?: continue
+                        transactionList.add(t)
+                    }
+                    runOnUiThread {
+                        transactionList.reverse()
+                        transactionAdapter?.notifyDataSetChanged()
+                        
+                        // CHART BINDING: Refresh visualization whenever transactions change
+                        updatePieChart(transactionList)
+                    }
+                }
+                override fun onCancelled(error: DatabaseError) {}
+            })
+    }
+
+    private fun updatePieChart(list: List<transactions>) {
+        if (pieChart == null) return
+
+        val categoryTotals = mutableMapOf<String, Double>()
+        val month = Calendar.getInstance().get(Calendar.MONTH) + 1
+        var monthlyTotal = 0.0
+        
+        for (t in list) {
+            val dateParts = t.transaction_date.split("/")
+            if (dateParts.size >= 2 && dateParts[1].toIntOrNull() == month && t.category.type == "Expense") {
+                val catName = t.category.category_name
+                categoryTotals[catName] = categoryTotals.getOrDefault(catName, 0.0) + t.transaction_amamount
+                monthlyTotal += t.transaction_amamount
+            }
         }
 
+        if (categoryTotals.isEmpty()) {
+            pieChart?.clear()
+            pieChart?.setNoDataText("No expenses this month")
+            pieChart?.invalidate()
+            tvHighestExpenseName?.text = "N/A"
+            tvMonthlyTotal?.text = "R 0.00"
+            return
+        }
+
+        // Update Monthly Total in Header
+        animateCounter(tvMonthlyTotal, monthlyTotal)
+
+        val entries = ArrayList<PieEntry>()
+        var highestCat = ""
+        var maxAmount = 0.0
+        
+        for ((name, total) in categoryTotals) {
+            entries.add(PieEntry(total.toFloat(), name))
+            if (total > maxAmount) {
+                maxAmount = total
+                highestCat = name
+            }
+        }
+
+        val colors = com.github.mikephil.charting.utils.ColorTemplate.MATERIAL_COLORS.toMutableList()
         val dataSet = PieDataSet(entries, "")
-        dataSet.colors = ColorTemplate.MATERIAL_COLORS.toList()
-        dataSet.valueTextColor = Color.BLACK
-        dataSet.valueTextSize = 12f
+        dataSet.colors = colors
+        dataSet.setDrawValues(false) // Clean donut look
 
         val data = PieData(dataSet)
-        pieChart.data = data
-        pieChart.description.isEnabled = false
-        pieChart.centerText = "Spending"
-        pieChart.setCenterTextSize(16f)
-        pieChart.animateY(1000)
-        pieChart.invalidate()
+        pieChart?.data = data
+        
+        // Donut configuration
+        pieChart?.isDrawHoleEnabled = true
+        pieChart?.holeRadius = 75f
+        pieChart?.setHoleColor(Color.WHITE)
+        pieChart?.setTransparentCircleRadius(80f)
+        
+        // Center text styling
+        val centerText = android.text.SpannableString("Spending\n\n${String.format(Locale.getDefault(), "%,.0f\n%s", maxAmount, highestCat)}")
+        pieChart?.centerText = centerText
+        pieChart?.setCenterTextSize(16f)
+        pieChart?.setCenterTextColor(Color.WHITE)
+        
+        pieChart?.description?.isEnabled = false
+        pieChart?.legend?.isEnabled = false
+        pieChart?.animateY(1000)
+        pieChart?.invalidate()
+
+        // Update indicator under chart
+        tvHighestExpenseName?.text = highestCat
+        val colorIndex = entries.indexOfFirst { it.label == highestCat }
+        if (colorIndex != -1) {
+            vHighestExpenseColor?.setBackgroundColor(colors[colorIndex % colors.size])
+        }
     }
 
-    override fun onBackPressed() {
-        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
-            drawerLayout.closeDrawer(GravityCompat.START)
+    private fun animateCounter(view: TextView?, target: Double) {
+        if (view == null) return
+        view.text = String.format(Locale.getDefault(), "R %.2f", target)
+        view.animate().scaleX(1.1f).scaleY(1.1f).setDuration(100).withEndAction {
+            view.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
+        }.start()
+    }
+
+    private fun setupNavigationHandlers() {
+        findViewById<ImageView>(R.id.btnTopNotifications)?.setOnClickListener { startActivity(Intent(this, NotificationsActivity::class.java)) }
+        findViewById<CardView>(R.id.btnTopProfile)?.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
+        
+        NavigationHelper.setupBottomNavigation(this, 1)
+    }
+
+    private fun launchEditor(t: transactions) {
+        val i = Intent(this, AddExpenseActivity::class.java)
+        i.putExtra("TRANSACTION_KEY", t.transaction_id)
+        startActivity(i)
+    }
+
+    private fun forceSafeLogout() {
+        val i = Intent(this, activity_login::class.java)
+        i.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(i)
+        finish()
+    }
+
+    private fun handleInitializationCollapse(e: Exception, fatal: Boolean) {
+        Log.e(TAG, "COLLAPSE CRASH DETECTED", e)
+        if (fatal) {
+            Toast.makeText(this, "A critical error occurred. Please restart the app.", Toast.LENGTH_LONG).show()
+            // Log full stack trace for the user to find in logcat
+            e.printStackTrace()
+            forceSafeLogout()
         } else {
-            super.onBackPressed()
+            Toast.makeText(this, "Syncing data in background...", Toast.LENGTH_SHORT).show()
         }
     }
 }

@@ -9,6 +9,7 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
@@ -17,7 +18,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.budget_app.Transaction_Adapter.TransactionAdapter
+import com.example.budget_app.transaction_adapter.TransactionAdapter
 import com.example.budget_app.model.Account
 import com.example.budget_app.model.Category
 import com.example.budget_app.model.transactions
@@ -26,6 +27,7 @@ import com.google.android.material.chip.ChipGroup
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import java.util.Locale
 
 class TransactionHistoryActivity : AppCompatActivity() {
 
@@ -71,7 +73,7 @@ class TransactionHistoryActivity : AppCompatActivity() {
         etSearch.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                searchQuery = s.toString().lowercase()
+                searchQuery = s.toString().lowercase(Locale.getDefault())
                 applyFilters()
             }
             override fun afterTextChanged(s: Editable?) {}
@@ -79,6 +81,44 @@ class TransactionHistoryActivity : AppCompatActivity() {
 
         findViewById<ImageView>(R.id.ivMenu).setOnClickListener {
             drawerLayout.openDrawer(GravityCompat.START)
+        }
+
+        navView.setNavigationItemSelectedListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.nav_home -> {
+                    startActivity(Intent(this, MainActivity::class.java))
+                    finish()
+                }
+                R.id.nav_categories -> startActivity(Intent(this, Category::class.java))
+                R.id.nav_goals -> startActivity(Intent(this, activity_creategoal::class.java))
+                R.id.nav_history -> drawerLayout.closeDrawer(GravityCompat.START)
+                R.id.nav_help -> Toast.makeText(this, "Help Centre", Toast.LENGTH_SHORT).show()
+                R.id.nav_logout -> {
+                    auth.signOut()
+                    startActivity(Intent(this, activity_login::class.java))
+                    finish()
+                }
+            }
+            drawerLayout.closeDrawer(GravityCompat.START)
+            true
+        }
+
+        // Migrate onBackPressed
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
+
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+            insets
         }
 
         fetchTransactionsAndCategories()
@@ -137,29 +177,29 @@ class TransactionHistoryActivity : AppCompatActivity() {
         var total = 0.0
         for (trans in allTransactions) {
             val matchesCategory = selectedCategory == "All" || trans.category.category_name == selectedCategory
-            val matchesSearch = trans.transaction_name.lowercase().contains(searchQuery)
+            val matchesSearch = trans.transaction_name.lowercase(Locale.getDefault()).contains(searchQuery)
             if (matchesCategory && matchesSearch) {
                 filteredTransactions.add(trans)
                 total += trans.transaction_amamount
             }
         }
         transactionAdapter.updateList(filteredTransactions)
-        tvTotalAmount.text = "R ${String.format("%.2f", total)}"
+        tvTotalAmount.text = String.format(Locale.getDefault(), "R %.2f", total)
         tvEmptyState.visibility = if (filteredTransactions.isEmpty()) View.VISIBLE else View.GONE
     }
 
     private fun showDeleteConfirmation(transaction: transactions) {
-        val key = allKeys[allTransactions.indexOf(transaction)]
+        val index = allTransactions.indexOf(transaction)
+        if (index == -1) return
+        val key = allKeys[index]
+        
         AlertDialog.Builder(this)
             .setTitle("Delete Transaction")
             .setMessage("Refund amount to account?")
             .setPositiveButton("Delete & Refund") { _, _ ->
                 val userId = auth.currentUser?.uid ?: return@setPositiveButton
                 
-                // 1. Refund to account balance
                 refundTransaction(transaction)
-                
-                // 2. Delete transaction record
                 database.getReference("users").child(userId).child("transactions").child(key).removeValue()
             }
             .setNegativeButton("Cancel", null)
@@ -183,7 +223,9 @@ class TransactionHistoryActivity : AppCompatActivity() {
     }
 
     private fun showEditTransaction(transaction: transactions) {
-        val key = allKeys[allTransactions.indexOf(transaction)]
+        val index = allTransactions.indexOf(transaction)
+        if (index == -1) return
+        val key = allKeys[index]
         val intent = Intent(this, AddExpenseActivity::class.java)
         intent.putExtra("TRANSACTION_KEY", key)
         startActivity(intent)

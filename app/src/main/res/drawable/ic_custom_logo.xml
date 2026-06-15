@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Outer Ring -->
+    <path
+        android:fillColor="@color/neon_purple"
+        android:pathData="M100,20 C55.8,20 20,55.8 20,100 C20,144.2 55.8,180 100,180 C144.2,180 180,144.2 180,100 C180,55.8 144.2,20 100,20 Z M100,170 C61.3,170 30,138.7 30,100 C30,61.3 61.3,30 100,30 C138.7,30 170,61.3 170,100 C170,138.7 138.7,170 100,170 Z" />
+
+    <!-- Currency Symbol / Wallet Shape -->
+    <path
+        android:fillColor="@color/neon_blue"
+        android:pathData="M70,70 L130,70 L130,110 C130,121 121,130 110,130 L90,130 C79,130 70,121 70,110 Z" />
+
+    <!-- Coins / Growth -->
+    <path
+        android:fillColor="@color/white"
+        android:pathData="M85,85 L115,85 L115,95 L85,95 Z M85,105 L115,105 L115,115 L85,115 Z" />
+
+</vector>

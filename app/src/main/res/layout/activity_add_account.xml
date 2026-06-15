@@ -1,68 +1,96 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp">
+    android:background="@color/dark_bg"
+    tools:context=".AddAccountActivity">
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="160dp"
+        android:background="@drawable/animated_gradient_bg"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/tvTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Add New Account"
-        android:textSize="24sp"
+        android:layout_margin="24dp"
+        android:text="Add Account"
+        android:textColor="@color/white"
+        android:textSize="28sp"
         android:textStyle="bold"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/tilAccountName"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+    <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:hint="Account Name (e.g., Bank, Wallet)"
-        app:layout_constraintTop_toBottomOf="@id/tvTitle">
+        android:layout_height="0dp"
+        android:layout_marginTop="100dp"
+        app:cardBackgroundColor="@color/dark_bg"
+        app:cardCornerRadius="32dp"
+        app:cardElevation="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etAccountName"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/tilBalance"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:hint="Current Balance"
-        app:layout_constraintTop_toBottomOf="@id/tilAccountName">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etBalance"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inputType="numberDecimal" />
-    </com.google.android.material.textfield.TextInputLayout>
+            android:orientation="vertical"
+            android:padding="24dp">
 
-    <Button
-        android:id="@+id/btnSaveAccount"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="Save Account"
-        app:layout_constraintTop_toBottomOf="@id/tilBalance" />
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etAccountName"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:background="@drawable/glass_edittext_bg"
+                android:hint="Account Name (e.g., Savings)"
+                android:paddingHorizontal="20dp"
+                android:textColor="@color/white"
+                android:textColorHint="#88FFFFFF" />
 
-    <Button
-        android:id="@+id/btnDeleteAccount"
-        style="@style/Widget.MaterialComponents.Button.TextButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Delete Account"
-        android:textColor="#F44336"
-        android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/btnSaveAccount" />
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etBalance"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_marginTop="20dp"
+                android:background="@drawable/glass_edittext_bg"
+                android:hint="Initial Balance (R)"
+                android:inputType="numberDecimal"
+                android:paddingHorizontal="20dp"
+                android:textColor="@color/white"
+                android:textColorHint="#88FFFFFF"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnSaveAccount"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_marginTop="40dp"
+                android:backgroundTint="@color/neon_blue"
+                android:text="Save Account"
+                android:textColor="@color/dark_bg"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                app:cornerRadius="20dp" />
+
+            <Button
+                android:id="@+id/btnDeleteAccount"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_marginTop="16dp"
+                android:backgroundTint="#22FF5252"
+                android:text="Delete Account"
+                android:textColor="#FF5252"
+                android:visibility="gone"
+                app:cornerRadius="20dp"
+                app:strokeColor="#FF5252"
+                app:strokeWidth="1dp" />
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

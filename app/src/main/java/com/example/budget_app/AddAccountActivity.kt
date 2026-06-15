@@ -101,6 +101,7 @@ class AddAccountActivity : AppCompatActivity() {
 
         accountRef.setValue(account).addOnCompleteListener { task ->
             if (task.isSuccessful) {
+                awardXP(50) // More XP for adding an account
                 val msg = if (isEditMode) "Account updated" else "Account added"
                 Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
                 finish()
@@ -108,6 +109,30 @@ class AddAccountActivity : AppCompatActivity() {
                 Toast.makeText(this, "Failed to save account", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun awardXP(amount: Int) {
+        val userId = auth.currentUser?.uid ?: return
+        val gamificationRef = database.getReference("users").child(userId).child("gamification")
+        
+        gamificationRef.runTransaction(object : com.google.firebase.database.Transaction.Handler {
+            override fun doTransaction(currentData: com.google.firebase.database.MutableData): com.google.firebase.database.Transaction.Result {
+                var xp = currentData.child("xp").getValue(Int::class.java) ?: 0
+                var level = currentData.child("level").getValue(Int::class.java) ?: 1
+                
+                xp += amount
+                val xpThreshold = level * 200
+                if (xp >= xpThreshold) {
+                    level++
+                }
+                
+                currentData.child("xp").value = xp
+                currentData.child("level").value = level
+                
+                return com.google.firebase.database.Transaction.success(currentData)
+            }
+            override fun onComplete(error: DatabaseError?, committed: Boolean, snapshot: DataSnapshot?) {}
+        })
     }
 
     private fun showDeleteConfirmation() {

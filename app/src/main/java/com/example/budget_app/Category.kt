@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -19,7 +20,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.recyclerview.widget.RecyclerView
-import com.example.budget_app.model.Category
 import com.example.budget_app.model.transactions
 import com.github.mikephil.charting.charts.PieChart
 import com.github.mikephil.charting.data.PieData
@@ -29,6 +29,8 @@ import com.github.mikephil.charting.utils.ColorTemplate
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import java.text.SimpleDateFormat
+import java.util.*
 
 class Category : AppCompatActivity() {
 
@@ -43,8 +45,10 @@ class Category : AppCompatActivity() {
     private lateinit var pieChart: PieChart
     private lateinit var auth: FirebaseAuth
     private lateinit var database: FirebaseDatabase
+    private lateinit var chipGroupFilter: com.google.android.material.chip.ChipGroup
 
     private var isExpensesTabSelected = true
+    private var currentFilter = "Month"
     private val expenseCategories = mutableListOf<CategoryItem>()
     private val incomeCategories = mutableListOf<CategoryItem>()
     private val categorySpending = mutableMapOf<String, Double>()
@@ -62,21 +66,33 @@ class Category : AppCompatActivity() {
 
         // Initialize Views
         rvCategories = findViewById(R.id.rv_categories)
+        rvCategories.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
         tabExpenses = findViewById(R.id.tabExpenses)
         tabIncome = findViewById(R.id.tabIncome)
         tvExpensesTab = findViewById(R.id.tvExpensesTab)
         tvIncomeTab = findViewById(R.id.tvIncomeTab)
         indicatorExpenses = findViewById(R.id.indicatorExpenses)
         indicatorIncome = findViewById(R.id.indicatorIncome)
+        chipGroupFilter = findViewById(R.id.chipGroupFilter)
         val ivMenu = findViewById<ImageView>(R.id.ivMenu)
         val fabAddCategory = findViewById<ImageView>(R.id.fab_add_category)
+        val tvMergeCategories = findViewById<TextView>(R.id.tvMergeCategories)
 
         ivMenu.setOnClickListener {
             drawerLayout.openDrawer(GravityCompat.START)
         }
 
         fabAddCategory.setOnClickListener {
-            showAddCategoryDialog()
+            if (isExpensesTabSelected) {
+                showAddCategoryDialog()
+            } else {
+                // If in Income tab, show a generic Income logging dialog as requested
+                showQuickIncomeLogDialog()
+            }
+        }
+
+        tvMergeCategories?.setOnClickListener {
+            showMergeCategoriesDialog()
         }
 
         navView.setNavigationItemSelectedListener { menuItem ->
@@ -100,6 +116,8 @@ class Category : AppCompatActivity() {
         }
 
         setupTabs()
+        setupFilters()
+        setupBottomNavigation()
         fetchSpendingAndCategories()
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
@@ -129,19 +147,34 @@ class Category : AppCompatActivity() {
         }
     }
 
+    private fun setupFilters() {
+        chipGroupFilter.setOnCheckedChangeListener { group, checkedId ->
+            currentFilter = when (checkedId) {
+                R.id.chipDay -> "Day"
+                R.id.chipWeek -> "Week"
+                else -> "Month"
+            }
+            fetchSpendingAndCategories()
+        }
+    }
+
     private fun updateTabUI() {
-        val activeColor = Color.parseColor("#2E7D32")
-        val inactiveColor = Color.parseColor("#757575")
+        val activeColor = Color.parseColor("#00E5FF") // neon_blue
+        val inactiveColor = Color.parseColor("#FFFFFF") // white
 
         if (isExpensesTabSelected) {
             tvExpensesTab.setTextColor(activeColor)
+            tvExpensesTab.alpha = 1.0f
             indicatorExpenses.visibility = View.VISIBLE
             tvIncomeTab.setTextColor(inactiveColor)
+            tvIncomeTab.alpha = 0.5f
             indicatorIncome.visibility = View.INVISIBLE
         } else {
             tvExpensesTab.setTextColor(inactiveColor)
+            tvExpensesTab.alpha = 0.5f
             indicatorExpenses.visibility = View.INVISIBLE
             tvIncomeTab.setTextColor(activeColor)
+            tvIncomeTab.alpha = 1.0f
             indicatorIncome.visibility = View.VISIBLE
         }
     }
@@ -151,51 +184,69 @@ class Category : AppCompatActivity() {
         val transRef = database.getReference("users").child(userId).child("transactions")
         val catRef = database.getReference("users").child(userId).child("categories")
 
-        // First fetch transactions to calculate spending
+        // DECUPLED ENGINE: Listeners operate independently to ensure UI refresh on any change
         transRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 categorySpending.clear()
+                val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                val now = Calendar.getInstance()
+
                 for (data in snapshot.children) {
                     val trans = data.getValue(transactions::class.java)
                     if (trans != null) {
-                        val catName = trans.category.category_name
-                        val current = categorySpending.getOrDefault(catName, 0.0)
-                        categorySpending[catName] = current + trans.transaction_amamount
+                        try {
+                            val transDate = sdf.parse(trans.transaction_date)
+                            val cal = Calendar.getInstance()
+                            if (transDate != null) cal.time = transDate
+
+                            val isInFilter = when (currentFilter) {
+                                "Day" -> now.get(Calendar.DAY_OF_YEAR) == cal.get(Calendar.DAY_OF_YEAR) && now.get(Calendar.YEAR) == cal.get(Calendar.YEAR)
+                                "Week" -> now.get(Calendar.WEEK_OF_YEAR) == cal.get(Calendar.WEEK_OF_YEAR) && now.get(Calendar.YEAR) == cal.get(Calendar.YEAR)
+                                else -> now.get(Calendar.MONTH) == cal.get(Calendar.MONTH) && now.get(Calendar.YEAR) == cal.get(Calendar.YEAR)
+                            }
+
+                            if (isInFilter) {
+                                val catName = trans.category.category_name
+                                val current = categorySpending.getOrDefault(catName, 0.0)
+                                categorySpending[catName] = current + trans.transaction_amamount
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
                     }
                 }
-                // Then fetch categories
-                catRef.addValueEventListener(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        expenseCategories.clear()
-                        incomeCategories.clear()
+                updateCategoryList()
+                updatePieChart()
+            }
+            override fun onCancelled(error: DatabaseError) {}
+        })
 
-                        for (data in snapshot.children) {
-                            val cat = data.getValue(com.example.budget_app.model.Category::class.java)
-                            if (cat != null) {
-                                val item = CategoryItem(data.key ?: "", cat.category_name, cat.color, cat.iconRes, cat.budget)
-                                if (cat.type == "Expense") {
-                                    expenseCategories.add(item)
-                                } else {
-                                    incomeCategories.add(item)
-                                }
-                            }
-                        }
+        catRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                expenseCategories.clear()
+                incomeCategories.clear()
 
-                        if (expenseCategories.isEmpty() && incomeCategories.isEmpty()) {
-                            seedDefaultCategories()
+                for (data in snapshot.children) {
+                    val cat = data.getValue(com.example.budget_app.model.Category::class.java)
+                    if (cat != null) {
+                        val item = CategoryItem(data.key ?: "", cat.category_name, cat.color, cat.iconRes, cat.budget)
+                        if (cat.type == "Expense") {
+                            expenseCategories.add(item)
                         } else {
-                            updateCategoryList()
-                            updatePieChart()
+                            incomeCategories.add(item)
                         }
                     }
+                }
 
-                    override fun onCancelled(error: DatabaseError) {}
-                })
+                if (expenseCategories.isEmpty() && incomeCategories.isEmpty()) {
+                    seedDefaultCategories()
+                }
+                
+                // FORCE REFRESH: Re-bind adapter with new data
+                updateCategoryList()
+                updatePieChart()
             }
-
-            override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(this@Category, "Error: ${error.message}", Toast.LENGTH_SHORT).show()
-            }
+            override fun onCancelled(error: DatabaseError) {}
         })
     }
 
@@ -218,28 +269,46 @@ class Category : AppCompatActivity() {
 
         if (entries.isEmpty()) {
             pieChart.clear()
-            pieChart.setNoDataText("No data available for this period")
+            pieChart.setNoDataText("No data available")
+            pieChart.setNoDataTextColor(Color.WHITE)
             pieChart.invalidate()
             return
         }
 
         val dataSet = PieDataSet(entries, "")
         dataSet.colors = colors
-        dataSet.valueTextColor = Color.WHITE
-        dataSet.valueTextSize = 12f
-        dataSet.sliceSpace = 3f
+        dataSet.setDrawValues(false)
 
         val data = PieData(dataSet)
         pieChart.data = data
         pieChart.description.isEnabled = false
-        pieChart.centerText = if (isExpensesTabSelected) "Expenses" else "Income"
-        pieChart.setCenterTextSize(18f)
+        
+        // Donut configuration
+        pieChart.isDrawHoleEnabled = true
+        pieChart.holeRadius = 75f
         pieChart.setHoleColor(Color.TRANSPARENT)
+        
+        val centerTitle = if (isExpensesTabSelected) "Expenses" else "Income"
+        var highestCat = ""
+        var maxAmount = 0.0
+        
+        // Filter spending by current tab categories
+        val currentCatNames = categories.map { it.name }
+        for ((name, spent) in categorySpending) {
+            if (name in currentCatNames && spent > maxAmount) {
+                maxAmount = spent
+                highestCat = name
+            }
+        }
+        
+        val centerText = android.text.SpannableString("$centerTitle\n\n${String.format(Locale.getDefault(), "%,.0f\n%s", maxAmount, highestCat)}")
+        pieChart.centerText = centerText
+        pieChart.setCenterTextSize(18f)
+        pieChart.setCenterTextColor(Color.WHITE)
+        
         pieChart.animateY(1000)
         pieChart.legend.isEnabled = false
-        pieChart.setDrawEntryLabels(true)
-        pieChart.setEntryLabelColor(Color.WHITE)
-        pieChart.setEntryLabelTextSize(10f)
+        pieChart.setDrawEntryLabels(false)
         pieChart.invalidate()
     }
 
@@ -247,16 +316,28 @@ class Category : AppCompatActivity() {
         val userId = auth.currentUser?.uid ?: return
         val catRef = database.getReference("users").child(userId).child("categories")
 
-        val defaults = listOf(
-            com.example.budget_app.model.Category("Food & Drink", "#FF9800", android.R.drawable.ic_menu_gallery, "Expense"),
-            com.example.budget_app.model.Category("Shopping", "#E91E63", android.R.drawable.ic_menu_gallery, "Expense"),
-            com.example.budget_app.model.Category("Transport", "#FFEB3B", android.R.drawable.ic_menu_gallery, "Expense"),
-            com.example.budget_app.model.Category("Salary", "#4CAF50", android.R.drawable.ic_menu_gallery, "Income")
-        )
+        // ATOMIC SEED: Only push if the database is truly null/empty to prevent duplicates
+        catRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (!snapshot.exists() || snapshot.childrenCount == 0L) {
+                    val defaults = listOf(
+                        com.example.budget_app.model.Category("Food & Drink", "#FF9800", android.R.drawable.ic_menu_gallery, "Expense"),
+                        com.example.budget_app.model.Category("Shopping", "#E91E63", android.R.drawable.ic_menu_gallery, "Expense"),
+                        com.example.budget_app.model.Category("Transport", "#FFEB3B", android.R.drawable.ic_menu_gallery, "Expense"),
+                        com.example.budget_app.model.Category("Rent", "#2196F3", android.R.drawable.ic_menu_gallery, "Expense"),
+                        com.example.budget_app.model.Category("Grocery", "#9C27B0", android.R.drawable.ic_menu_gallery, "Expense"),
+                        com.example.budget_app.model.Category("Salary", "#4CAF50", android.R.drawable.ic_menu_gallery, "Income"),
+                        com.example.budget_app.model.Category("Gift", "#00E5FF", android.R.drawable.ic_menu_gallery, "Income"),
+                        com.example.budget_app.model.Category("Dividends", "#D500F9", android.R.drawable.ic_menu_gallery, "Income")
+                    )
 
-        for (cat in defaults) {
-            catRef.push().setValue(cat)
-        }
+                    for (cat in defaults) {
+                        catRef.push().setValue(cat)
+                    }
+                }
+            }
+            override fun onCancelled(error: DatabaseError) {}
+        })
     }
 
     private fun updateCategoryList() {
@@ -314,6 +395,9 @@ class Category : AppCompatActivity() {
         
         catRef.setValue(category).addOnCompleteListener { task ->
             if (task.isSuccessful) {
+                if (existingId == null) {
+                    NotificationRepository.logEvent(userId, "Transaction Event", "New category created: $name")
+                }
                 Toast.makeText(this, if (existingId == null) "Category Added" else "Category Updated", Toast.LENGTH_SHORT).show()
             }
         }
@@ -336,6 +420,101 @@ class Category : AppCompatActivity() {
             .show()
     }
 
+    private fun showLogTransactionDialog(item: CategoryItem) {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_category, null)
+        val etAmount = dialogView.findViewById<EditText>(R.id.etCategoryBudget) // Reusing field for amount
+        val etDesc = dialogView.findViewById<EditText>(R.id.etCategoryName) // Reusing field for desc
+        
+        etAmount.hint = "Amount"
+        etDesc.hint = "Description"
+        etAmount.setText("")
+        etDesc.setText("")
+
+        val type = if (isExpensesTabSelected) "Expense" else "Income"
+
+        AlertDialog.Builder(this)
+            .setTitle("Log $type: ${item.name}")
+            .setView(dialogView)
+            .setPositiveButton("Log") { _, _ ->
+                val amount = etAmount.text.toString().toDoubleOrNull() ?: 0.0
+                val desc = etDesc.text.toString().trim()
+                if (amount > 0 && desc.isNotEmpty()) {
+                    val category = com.example.budget_app.model.Category(item.name, item.colorCode, item.iconRes, type, item.budget)
+                    CategoryRepository.logExpense(category, amount, desc) { success ->
+                        if (success) {
+                            Toast.makeText(this, "$type Logged", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showQuickIncomeLogDialog() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_category, null)
+        val etAmount = dialogView.findViewById<EditText>(R.id.etCategoryBudget)
+        val etDesc = dialogView.findViewById<EditText>(R.id.etCategoryName)
+        
+        etAmount.hint = "Amount"
+        etDesc.hint = "Source (e.g. Salary, Gift)"
+        etAmount.setText("")
+        etDesc.setText("")
+
+        AlertDialog.Builder(this)
+            .setTitle("Quick Income Log")
+            .setView(dialogView)
+            .setPositiveButton("Log") { _, _ ->
+                val amount = etAmount.text.toString().toDoubleOrNull() ?: 0.0
+                val desc = etDesc.text.toString().trim()
+                if (amount > 0 && desc.isNotEmpty()) {
+                    val category = com.example.budget_app.model.Category("General Income", "#4CAF50", android.R.drawable.ic_menu_gallery, "Income")
+                    CategoryRepository.logExpense(category, amount, desc) { success ->
+                        if (success) {
+                            Toast.makeText(this, "Income Logged", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showMergeCategoriesDialog() {
+        val categories = if (isExpensesTabSelected) expenseCategories else incomeCategories
+        if (categories.size < 2) {
+            Toast.makeText(this, "Need at least 2 categories to merge", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val names = categories.map { it.name }.toTypedArray()
+        var selectedSourceIdx = 0
+
+        AlertDialog.Builder(this)
+            .setTitle("Merge Category From...")
+            .setSingleChoiceItems(names, 0) { _, which -> selectedSourceIdx = which }
+            .setPositiveButton("Next") { _, _ ->
+                val source = categories[selectedSourceIdx]
+                val remainingNames = categories.filter { it.id != source.id }.map { it.name }.toTypedArray()
+                var selectedTargetIdx = 0
+                
+                AlertDialog.Builder(this)
+                    .setTitle("Merge into...")
+                    .setSingleChoiceItems(remainingNames, 0) { _, which -> selectedTargetIdx = which }
+                    .setPositiveButton("Merge") { _, _ ->
+                        val targetName = remainingNames[selectedTargetIdx]
+                        val target = categories.find { it.name == targetName }
+                        if (target != null) {
+                            CategoryRepository.mergeCategories(source.id, target.id) { success ->
+                                if (success) Toast.makeText(this, "Categories Merged", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                    .show()
+            }
+            .show()
+    }
+
     data class CategoryItem(val id: String, val name: String, val colorCode: String, val iconRes: Int, val budget: Double)
 
     inner class CategoryAdapter(private val items: List<CategoryItem>) :
@@ -346,6 +525,7 @@ class Category : AppCompatActivity() {
             val tvSubtitle: TextView = view.findViewById(R.id.tvCategorySubtitle)
             val ivIcon: ImageView = view.findViewById(R.id.ivCategoryIcon)
             val cvIconBackground: CardView = view.findViewById(R.id.cvIconBackground)
+            val pbProgress: ProgressBar = view.findViewById(R.id.pbCategoryProgress)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -361,16 +541,24 @@ class Category : AppCompatActivity() {
             
             val spent = categorySpending.getOrDefault(item.name, 0.0)
             if (item.budget > 0) {
-                val remaining = item.budget - spent
                 holder.tvSubtitle.text = "Spent: R${String.format("%.2f", spent)} / Budget: R${String.format("%.2f", item.budget)}"
-                if (remaining < 0) {
+                
+                holder.pbProgress.visibility = View.VISIBLE
+                val progress = ((spent / item.budget) * 100).toInt()
+                holder.pbProgress.progress = progress.coerceIn(0, 100)
+                
+                if (spent > item.budget) {
                     holder.tvSubtitle.setTextColor(Color.RED)
+                    holder.tvSubtitle.alpha = 1.0f
                 } else {
-                    holder.tvSubtitle.setTextColor(Color.parseColor("#757575"))
+                    holder.tvSubtitle.setTextColor(Color.WHITE)
+                    holder.tvSubtitle.alpha = 0.7f
                 }
             } else {
                 holder.tvSubtitle.text = "Spent: R${String.format("%.2f", spent)}"
-                holder.tvSubtitle.setTextColor(Color.parseColor("#757575"))
+                holder.tvSubtitle.setTextColor(Color.WHITE)
+                holder.tvSubtitle.alpha = 0.7f
+                holder.pbProgress.visibility = View.GONE
             }
 
             try {
@@ -380,7 +568,7 @@ class Category : AppCompatActivity() {
             }
 
             holder.itemView.setOnClickListener {
-                showAddCategoryDialog(item)
+                showLogTransactionDialog(item)
             }
 
             holder.itemView.setOnLongClickListener {
@@ -390,6 +578,20 @@ class Category : AppCompatActivity() {
         }
 
         override fun getItemCount() = items.size
+    }
+
+    private fun setupBottomNavigation() {
+        val well1 = findViewById<View>(R.id.nav_well_1)
+        val well2 = findViewById<View>(R.id.nav_well_2)
+        val well3 = findViewById<View>(R.id.nav_well_3)
+        val well4 = findViewById<View>(R.id.nav_well_4)
+        
+        well2.isSelected = true
+
+        well1.setOnClickListener { startActivity(Intent(this, MainActivity::class.java)) }
+        well2.setOnClickListener { /* Already here */ }
+        well3.setOnClickListener { startActivity(Intent(this, Createbudget::class.java)) }
+        well4.setOnClickListener { startActivity(Intent(this, GamificationActivity::class.java)) }
     }
 
     override fun onBackPressed() {
